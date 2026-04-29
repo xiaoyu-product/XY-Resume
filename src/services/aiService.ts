@@ -10,13 +10,62 @@ export interface AIResponse {
   error?: string
 }
 
-const env = import.meta as unknown as { env: Record<string, string | undefined> }
-const API_BASE_URL = env.env.VITE_AI_API_URL || 'https://api.openai.com/v1'
-const API_KEY = env.env.VITE_AI_API_KEY || ''
+let apiBaseUrl: string
+let apiKey: string
+let isDemoMode: boolean
+
+try {
+  const env = import.meta as unknown as { env: Record<string, string | undefined> }
+  apiBaseUrl = env.env.VITE_AI_API_URL || 'https://api.openai.com/v1'
+  apiKey = env.env.VITE_AI_API_KEY || ''
+  isDemoMode = !apiKey || apiKey.trim() === ''
+} catch {
+  apiBaseUrl = 'https://api.openai.com/v1'
+  apiKey = ''
+  isDemoMode = true
+}
+
+export const isDemo = isDemoMode
+
+const demoPolishResults: Record<string, { polished: string; suggestions: string[] }> = {
+  summary: {
+    polished: '具有5年以上全栈开发经验，精通 React、Vue、Node.js 等主流技术栈。善于分析复杂业务需求，能够独立设计和实现高性能的Web应用。具备良好的团队协作能力和项目管理经验，曾主导多个大型项目从0到1的开发工作。',
+    suggestions: [
+      '突出了技术栈和经验年限',
+      '强调了独立工作能力',
+      '加入了项目管理经验',
+    ],
+  },
+  description: {
+    polished: '负责公司核心产品的架构设计与开发，主导完成了微服务架构改造，系统性能提升40%。带领5人开发团队，按时交付率达到98%。优化数据库查询，将响应时间从2秒缩短至200毫秒。',
+    suggestions: [
+      '使用动词开头突出成果',
+      '量化业绩数据（40%、98%、2秒→200毫秒）',
+      '明确团队管理经验',
+    ],
+  },
+}
+
+function getDemoResult(text: string, type: string): AIPolishResult {
+  const result = demoPolishResults[type] || demoPolishResults.summary
+  return {
+    original: text,
+    polished: result.polished,
+    suggestions: result.suggestions,
+  }
+}
 
 export async function polishText(text: string, type: 'summary' | 'description' = 'summary'): Promise<AIResponse> {
   if (!text.trim()) {
     return { success: false, error: '请输入需要润色的文本' }
+  }
+
+  if (isDemoMode) {
+    await new Promise(resolve => setTimeout(resolve, 1500))
+    return {
+      success: true,
+      data: getDemoResult(text, type),
+    }
   }
 
   const prompts: Record<string, string> = {
@@ -47,11 +96,11 @@ export async function polishText(text: string, type: 'summary' | 'description' =
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}/chat/completions`, {
+    const response = await fetch(`${apiBaseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         model: 'gpt-3.5-turbo',
@@ -126,6 +175,18 @@ export async function polishResumeSections(): Promise<AIResponse> {
       return { success: false, error: '简历中没有可润色的内容' }
     }
 
+    if (isDemoMode) {
+      await new Promise(resolve => setTimeout(resolve, 1500))
+      return {
+        success: true,
+        data: {
+          original: allTexts.join('\n\n'),
+          polished: '**个人简介优化**：\n具有丰富的专业经验和扎实的技术能力，善于解决复杂问题，具备优秀的团队协作精神。\n\n**工作经历优化**：\n主导多个重要项目的开发与交付，带领团队高效完成任务，显著提升了产品性能和用户体验。\n\n**项目经验优化**：\n负责核心功能模块的设计与实现，运用创新技术方案解决业务痛点，获得用户高度认可。',
+          suggestions: ['优化了语言表达，使其更加专业', '突出了核心能力和成就', '使用了更具说服力的表述方式'],
+        },
+      }
+    }
+
     const prompt = `
       请帮我润色以下简历内容，使其更加专业、有竞争力：
       
@@ -138,11 +199,11 @@ export async function polishResumeSections(): Promise<AIResponse> {
       4. 返回格式保持原样，只需优化文字内容
     `
 
-    const response = await fetch(`${API_BASE_URL}/chat/completions`, {
+    const response = await fetch(`${apiBaseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         model: 'gpt-3.5-turbo',

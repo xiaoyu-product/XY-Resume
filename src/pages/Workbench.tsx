@@ -12,6 +12,7 @@ import {
   Download,
   Wand2,
   Eye,
+  AlertCircle,
 } from 'lucide-react'
 import { PersonalInfoEditor } from '@/components/editors/PersonalInfoEditor'
 import { EducationEditor } from '@/components/editors/EducationEditor'
@@ -23,6 +24,7 @@ import { TemplateSelector } from '@/components/TemplateSelector'
 import { ExportDialog } from '@/components/ExportDialog'
 import { ResumeImporter } from '@/components/ResumeImporter'
 import { AIPolishModal } from '@/components/AIPolishModal'
+import { isDemo } from '@/services/aiService'
 
 export function WorkbenchPage() {
   const { activeSection, setActiveSection, resume, currentTemplate, setTemplate } = useResumeStore()
@@ -58,6 +60,12 @@ export function WorkbenchPage() {
 
   return (
     <div className="h-screen flex flex-col bg-slate-50">
+      {isDemo && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center justify-center gap-2">
+          <AlertCircle className="w-4 h-4 text-amber-600" />
+          <span className="text-sm text-amber-700">当前为演示模式，AI 润色功能使用模拟数据</span>
+        </div>
+      )}
       <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 flex-shrink-0">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
